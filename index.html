@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FORMHUB</title>
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link href="lib/lungo/lungo.css" rel="stylesheet">
+    <link href="lib/lungo/lungo.icon.css" rel="stylesheet">
+    <link href="lib/lungo/theme.lungo.css" rel="stylesheet">
+</head>
+<body class="app">
+<section id="main" data-transition="">
+    <header data-title="Forms">
+        <nav>
+            <a href="#navigation" data-router="aside" data-icon="menu"></a>
+        </nav>
+    </header>
+    <article id="form-list" class="active list scroll">
+        <ul>
+            <li>
+                <a href="#">
+                    <strong>tutorial</strong>
+                    <small>The infamous tutorial form</small>
+                    <div class="right tag cancel">
+                        shared, crowd form
+                    </div>
+                </a>
+            </li>
+            <li class="arrow">
+                <a href="#">
+                    <strong>Water Points</strong>
+                    <small>Water points form</small>
+                </a>
+            </li>
+        </ul>
+    </article>
+</section>
+
+<section id="form" data-transition="">
+    <header data-title="Forms">
+        <nav>
+            <a href="#back" data-router="section" data-icon="left">Back</a>
+        </nav>
+    </header>
+    <article id="form-show" class="list indented scroll">
+        <ul>
+            <li id="form-name">
+                <strong>ID String: </strong>
+                <span></span>
+            </li>
+            <li id="form-title">
+                <strong>Title: </strong>
+                <span></span>
+            </li>
+            <li id="form-descr">
+                <strong>Description: </strong>
+                <span></span>
+            </li>
+        </ul>
+    </article>
+</section>
+
+<aside id="navigation">
+    <header data-title="Navigation"></header>
+    <article class="active">
+    </article>
+</aside>
+
+<SCRIPT SRC="lib/quo/quo.js"></SCRIPT>
+<SCRIPT SRC="lib/lungo/lungo.js"></SCRIPT>
+<SCRIPT>
+    Lungo.init({
+        name: 'formhub'
+    });
+
+    Array.prototype.find = function(func)
+    {
+        var idx;
+        for(var i = 0; i < this.length; i++)
+        {
+            if(func.call(this, this[i]))
+            {
+                idx = i;
+                break;
+            }
+        }
+        if(idx !== undefined)
+        {
+            return this[i];
+        }
+    };
+
+    Lungo.dom('#form').on('load', function(event){
+        var id_string = Lungo.Data.Cache.get("current-form").id_string;
+        var forms = Lungo.Data.Cache.get("forms");
+        var form = forms.find(function(form){
+            return form.id_string === id_string;
+        });
+        Lungo.View.Article.title(form.title?form.title:form.id_string);
+        Lungo.dom('#form-name span').html(form.id_string);
+        Lungo.dom('#form-title span').html(form.title);
+        Lungo.dom('#form-descr span').html(form.description);
+    });
+
+    Lungo.Service.Settings.async = true;
+    Lungo.Service.Settings.error = function(type, xhr){
+        Lungo.Core.log(3, "Service error.");
+    };
+    Lungo.Service.Settings.headers["Content-Type"] = "application/json";
+    Lungo.Service.Settings.crossDomain = false;
+    Lungo.Service.Settings.timeout = 1000;
+
+    var url = "http://localhost:6543/larryweya/forms";
+    var data = {};
+    var parseResponse = function(result){
+        Lungo.Data.Cache.set("forms", result.forms);
+        var container = $$('<ul></ul>');
+        result.forms.forEach(function(form){
+            var li = $$('<li></li>')
+            var a = $$('<a></a>').attr('href', '#').data("id_string", form.id_string);
+            a.append($$('<strong></strong>').html(form.title?form.title:form.id_string));
+            a.append($$('<small></small>').html(form.description));
+            if(form.shared === true || form.data_shared === true || form.is_crowd_form === true){
+                var flags = [];
+                if(form.shared)
+                    flags.push("shared");
+                if(form.data_shared)
+                    flags.push("public");
+                if(form.is_crowd_form)
+                    flags.push("crowd");
+                a.append($$('<div></div>').attr('class', 'right tag cancel').html(flags.join(", ")));
+            }
+            container.append(li.append(a));
+        });
+        $$('#form-list', 'ul').replaceWith(container);
+
+        // bind tap events
+        Lungo.dom('#form-list li a').on("singleTap", function(event) {
+            Lungo.Data.Cache.set("current-form", {id_string: $$(event.currentTarget).data("id_string")});
+            Lungo.Router.article("form", "form-show");
+        });
+    };
+
+    Lungo.Service.get(url, data, parseResponse, "json");
+</SCRIPT>
+</body>
+</html>
